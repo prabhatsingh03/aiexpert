@@ -191,7 +191,7 @@
 
         function runInLocalMode() {
             authStatusEl.innerHTML = `<i class="fas fa-desktop text-sky-400"></i><span class="text-slate-400 hidden sm:inline">Local Mode</span>`;
-            userIdDisplay.parentElement.style.display = 'none';
+            if (userIdDisplay) userIdDisplay.parentElement.style.display = 'none';
             renderFileList();
         }
 
@@ -285,8 +285,11 @@
 
         function setActiveFile(fileId) { const hasChanged=activeFileId!==fileId;activeFileId=fileId;updateActiveFileUI();loadChatHistory();if(hasChanged&&fileId){handleSuggestQuestions(fileId)}}
         function updateActiveFileUI() { fileListElement.querySelectorAll('[data-id]').forEach(e=>{const t=e.dataset.id===activeFileId;e.classList.toggle('bg-green-500/10',t),e.classList.toggle('border-green-500/50',t),e.classList.toggle('hover:bg-slate-700/50',!t)});toggleChatInput(!!activeFileId)}
-        function toggleChatInput(enabled) { userInput.disabled=!enabled,sendButton.disabled=!enabled,userInput.placeholder=enabled?"Ask a question...":"Select or upload a document to begin.",chatInputContainer.classList.toggle('opacity-50',!enabled),enabled||(userInput.value="")}
-        function showProcessing(isProcessing, text = '') { processingIndicator.classList.toggle('hidden',!isProcessing),processingIndicator.classList.toggle('flex',isProcessing),isProcessing&&(processingText.textContent=text),toggleChatInput(!1)}
+        function toggleChatInput(enabled) {
+            if (!userInput || !sendButton || !chatInputContainer) return;
+            userInput.disabled=!enabled,sendButton.disabled=!enabled,userInput.placeholder=enabled?"Ask a question...":"Select or upload a document to begin.",chatInputContainer.classList.toggle('opacity-50',!enabled),enabled||(userInput.value="")
+        }
+        function showProcessing(isProcessing, text = '') { if (processingIndicator) { processingIndicator.classList.toggle('hidden',!isProcessing),processingIndicator.classList.toggle('flex',isProcessing),isProcessing&&(processingText.textContent=text),toggleChatInput(!1)}}
         
         fileUploadInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
@@ -430,7 +433,14 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
                     key_points: `Extract the most important facts, data points, and conclusions from the following document as a bulleted list using markdown.\n\nDOCUMENT:\n---\n${content}`
                 };
                 const result = await callGemini(prompts[feature]);
-                modalContent.innerHTML = result.replace(/\* /g, '<ul><li>').replace(/\n/g, '</li></ul><ul><li>').replace(/<\/ul><ul><li><\/li>/g, '</ul>') + '</li></ul>';
+                // FIX: Correctly parse markdown lists into HTML
+                let htmlResult = result.split('\n').filter(line => line.trim().startsWith('*')).map(line => `<li>${line.substring(1).trim()}</li>`).join('');
+                if (htmlResult) {
+                    modalContent.innerHTML = `<ul>${htmlResult}</ul>`;
+                } else {
+                     modalContent.innerHTML = `<p>${result}</p>`; // Fallback for non-list content
+                }
+
                 modalLoader.classList.add('hidden');
                 modalContent.classList.remove('hidden');
             } catch (error) {

@@ -19,8 +19,17 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a; /* slate-900 */
+            background-color: #020617; /* Richer dark background */
         }
+        /* Thematic background pattern */
+        #app {
+            background-color: #0f172a;
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
+                radial-gradient(circle at 25% 25%, rgba(56, 189, 248, 0.05) 2%, transparent 20%),
+                radial-gradient(circle at 75% 75%, rgba(52, 211, 153, 0.05) 2%, transparent 20%);
+        }
+
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
@@ -29,94 +38,82 @@
 
         .chat-bubble { max-width: 85%; padding: 1rem; border-radius: 1.25rem; word-wrap: break-word; line-height: 1.6; }
         .chat-bubble-user { background-color: #2563eb; color: #f8fafc; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
-        .chat-bubble-ai { background-color: #1e293b; color: #cbd5e1; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .chat-bubble-ai { background-color: #1e293b; color: #cbd5e1; align-self: flex-start; border-bottom-left-radius: 0.25rem; border: 1px solid #334155; }
         
-        /* New Animations */
-        @keyframes slideInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        /* Animations */
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide-in-up { animation: slideInUp 0.4s ease-out forwards; }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateX(-15px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
         .animate-fade-in { opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
 
-        @keyframes pulse {
-            50% { opacity: 0.7; }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
         }
-        .animate-pulse-slow { animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .animate-pulse-glow { animation: pulse-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-        /* Modal animation */
         #gemini-modal.hidden > div { transform: scale(0.95); opacity: 0; }
         #gemini-modal > div { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* New AI "thinking" animation */
-        .typing-indicator span {
-            height: 10px;
-            width: 10px;
-            float: left;
-            margin: 0 1px;
-            background-color: #93c5fd;
-            display: block;
-            border-radius: 50%;
-            opacity: 0.4;
-            animation: typingAnimation 1s infinite;
-        }
+        .typing-indicator span { height: 10px; width: 10px; float: left; margin: 0 1px; background-color: #93c5fd; display: block; border-radius: 50%; opacity: 0.4; animation: typingAnimation 1s infinite; }
         .typing-indicator span:nth-of-type(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-of-type(3) { animation-delay: 0.4s; }
-        @keyframes typingAnimation {
-            0% { transform: translateY(0px); background-color: #93c5fd; }
-            25% { transform: translateY(-5px); background-color: #60a5fa; }
-            50% { transform: translateY(0px); background-color: #93c5fd; }
-            100% { transform: translateY(0px); background-color: #93c5fd; }
-        }
+        @keyframes typingAnimation { 0% { transform: translateY(0px); background-color: #93c5fd; } 25% { transform: translateY(-5px); background-color: #60a5fa; } 50% { transform: translateY(0px); background-color: #93c5fd; } 100% { transform: translateY(0px); background-color: #93c5fd; } }
 
         .suggested-question { cursor: pointer; background-color: #334155; border: 1px solid #475569; transition: all 0.2s ease-in-out; }
-        .suggested-question:hover { background-color: #475569; border-color: #64748b; transform: translateY(-2px); }
+        .suggested-question:hover { background-color: #475569; border-color: #a7f3d0; transform: translateY(-2px); }
         #modal-content ul { list-style-type: disc; padding-left: 1.5rem; }
         #modal-content li { margin-bottom: 0.5rem; }
     </style>
 </head>
 <body class="antialiased text-slate-300">
-    <div id="app" class="h-screen w-screen bg-slate-900">
-        <div class="w-full h-full bg-slate-800 flex flex-col">
+    <div id="app" class="h-screen w-screen">
+        <div class="w-full h-full bg-slate-900/50 backdrop-blur-sm flex flex-col">
             
-            <div class="p-4 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+            <div class="p-4 border-b border-slate-700/50 flex justify-between items-center flex-shrink-0">
                 <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-blue-500/20 rounded-lg"><i class="fas fa-flask-vial text-blue-400 animate-pulse-slow"></i></div>
-                    <h1 class="text-xl font-bold text-slate-100">AI Phosphoric Acid Expert</h1>
+                    <button id="menu-toggle-btn" class="p-2 md:hidden text-slate-300 hover:text-white">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <div class="p-2 bg-sky-500/10 rounded-lg animate-pulse-glow"><i class="fas fa-flask-vial text-sky-400"></i></div>
+                    <h1 class="text-lg sm:text-xl font-bold text-slate-100">AI Phosphoric Acid Expert</h1>
                 </div>
                 <div id="auth-status" class="text-sm text-slate-400 flex items-center space-x-2"><span>Initializing...</span></div>
             </div>
 
-            <div class="flex-1 flex overflow-hidden">
-                <div class="w-1/3 max-w-xs border-r border-slate-700 bg-slate-900/30 flex flex-col">
-                    <div class="p-4 flex-shrink-0">
-                        <h2 class="text-lg font-semibold mb-4 text-slate-200">Your Documents</h2>
+            <div class="flex-1 flex overflow-hidden relative">
+                <div id="menu-backdrop" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden"></div>
+                
+                <div id="file-panel" class="absolute top-0 left-0 h-full w-full max-w-xs z-30 transform -translate-x-full md:translate-x-0 md:static md:w-1/3 transition-transform duration-300 ease-in-out border-r border-slate-700/50 bg-slate-900/80 backdrop-blur-sm md:bg-transparent flex flex-col">
+                    <div class="p-4 flex-shrink-0 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-slate-200">Your Documents</h2>
+                        <button id="file-panel-close-btn" class="p-1 md:hidden text-slate-400 hover:text-white">
+                             <i class="fas fa-times fa-lg"></i>
+                        </button>
+                    </div>
+                    <div class="p-4 flex-shrink-0 border-b border-t border-slate-700/50">
                         <label for="file-upload" class="w-full cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg inline-flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg shadow-blue-600/20">
                             <i class="fas fa-plus mr-2"></i><span>Upload New File</span>
                         </label>
                         <input id="file-upload" type="file" class="hidden" accept=".pdf,.docx,.xlsx">
                         <p class="text-xs text-slate-500 mt-2 text-center">Supports PDF, DOCX, XLSX.</p>
                     </div>
-                    <div id="file-list" class="flex-1 overflow-y-auto space-y-2 px-4 pb-4"></div>
-                    <div id="user-info" class="p-3 border-t border-slate-700 bg-slate-900/50 text-slate-500 text-xs break-words">
+                    <div id="file-list" class="flex-1 overflow-y-auto space-y-2 p-4"></div>
+                    <div id="user-info" class="p-3 border-t border-slate-700/50 text-slate-500 text-xs break-words">
                         <p class="font-semibold text-slate-400">User ID:</p><span id="user-id-display"></span>
                     </div>
                 </div>
 
-                <div class="w-2/3 flex flex-col bg-slate-800">
-                    <div id="chat-box" class="flex-1 p-6 overflow-y-auto"><div class="flex flex-col space-y-5"></div></div>
-                    <div id="chat-input-container" class="p-4 border-t border-slate-700">
+                <div class="w-full md:w-2/3 flex flex-col bg-slate-800/50">
+                    <div id="chat-box" class="flex-1 p-4 sm:p-6 overflow-y-auto"><div class="flex flex-col space-y-5"></div></div>
+                    <div id="chat-input-container" class="p-4 border-t border-slate-700/50">
                         <div id="processing-indicator" class="hidden items-center text-sm text-slate-400 mb-2">
-                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400 mr-3"></div>
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-green-400 mr-3"></div>
                             <span id="processing-text">Processing file...</span>
                         </div>
                         <div class="relative">
-                             <textarea id="user-input" class="w-full pl-5 pr-16 py-3 bg-slate-700 text-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none" placeholder="Ask a question..." rows="1"></textarea>
+                             <textarea id="user-input" class="w-full pl-5 pr-16 py-3 bg-slate-700 text-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow resize-none" placeholder="Ask a question..." rows="1"></textarea>
                             <button id="send-button" class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 shadow-lg shadow-blue-600/30 transform hover:scale-110">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
@@ -131,7 +128,7 @@
     <div id="gemini-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-slate-700">
             <div class="flex justify-between items-center p-4 border-b border-slate-700">
-                <h3 id="modal-title" class="text-lg font-semibold text-white">✨ AI-Generated Result</h3>
+                <h3 id="modal-title" class="text-lg font-semibold text-white"></h3>
                 <button id="modal-close-btn" class="text-slate-400 hover:text-white"><i class="fas fa-times fa-lg"></i></button>
             </div>
             <div class="p-6 overflow-y-auto text-slate-300 leading-relaxed">
@@ -152,6 +149,7 @@
         const processingIndicator = document.getElementById('processing-indicator'), processingText = document.getElementById('processing-text');
         const chatInputContainer = document.getElementById('chat-input-container'), authStatusEl = document.getElementById('auth-status'), userIdDisplay = document.getElementById('user-id-display');
         const geminiModal = document.getElementById('gemini-modal'), modalTitle = document.getElementById('modal-title'), modalContent = document.getElementById('modal-content'), modalLoader = document.getElementById('modal-loader'), modalCloseBtn = document.getElementById('modal-close-btn');
+        const menuToggleBtn = document.getElementById('menu-toggle-btn'), filePanel = document.getElementById('file-panel'), filePanelCloseBtn = document.getElementById('file-panel-close-btn'), menuBackdrop = document.getElementById('menu-backdrop');
 
         // App State
         let db, auth, userId, activeFileId = null, fileListenerUnsubscribe = null, chatListenerUnsubscribe = null, isAuthReady = false;
@@ -172,7 +170,7 @@
                 onAuthStateChanged(auth, user => {
                     if (user) {
                         userId = user.uid;
-                        authStatusEl.innerHTML = `<i class="fas fa-check-circle text-green-400"></i><span class="text-slate-400">Connected</span>`;
+                        authStatusEl.innerHTML = `<i class="fas fa-check-circle text-green-400"></i><span class="text-slate-400 hidden sm:inline">Connected</span>`;
                         userIdDisplay.textContent = userId;
                         isAuthReady = true;
                         listenToFiles();
@@ -192,7 +190,7 @@
         }
 
         function runInLocalMode() {
-            authStatusEl.innerHTML = `<i class="fas fa-desktop text-blue-400"></i><span class="text-slate-400">Local Mode</span>`;
+            authStatusEl.innerHTML = `<i class="fas fa-desktop text-sky-400"></i><span class="text-slate-400 hidden sm:inline">Local Mode</span>`;
             userIdDisplay.parentElement.style.display = 'none';
             renderFileList();
         }
@@ -214,7 +212,7 @@
 
         function getFileIcon(fileName) {
             if (fileName.endsWith('.pdf')) return 'fa-file-pdf text-red-400';
-            if (fileName.endsWith('.docx')) return 'fa-file-word text-blue-400';
+            if (fileName.endsWith('.docx')) return 'fa-file-word text-sky-400';
             if (fileName.endsWith('.xlsx')) return 'fa-file-excel text-green-400';
             return 'fa-file-alt text-slate-400';
         }
@@ -248,7 +246,7 @@
                        </div>
                     </div>
                     <div class="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button class="summarize-btn text-slate-400 hover:text-blue-400 transition-colors" data-id="${file.id}" title="✨ Summarize Document"><i class="fas fa-align-left"></i></button>
+                        <button class="summarize-btn text-slate-400 hover:text-sky-400 transition-colors" data-id="${file.id}" title="✨ Summarize Document"><i class="fas fa-align-left"></i></button>
                         <button class="keypoints-btn text-slate-400 hover:text-green-400 transition-colors" data-id="${file.id}" title="✨ Extract Key Points"><i class="fas fa-list-check"></i></button>
                         <button class="delete-file-btn text-slate-500 hover:text-red-400 transition-colors" data-id="${file.id}" title="Delete Document"><i class="fas fa-trash-alt"></i></button>
                     </div>`;
@@ -261,10 +259,14 @@
             const fileItem = e.target.closest('[data-id]');
             if (!fileItem) return;
             const fileId = fileItem.dataset.id;
+            const isActionBtn = e.target.closest('.summarize-btn') || e.target.closest('.keypoints-btn') || e.target.closest('.delete-file-btn');
+            
             if (e.target.closest('.delete-file-btn')) deleteFile(fileId);
             else if (e.target.closest('.summarize-btn')) handleFeatureClick(fileId, 'summary');
             else if (e.target.closest('.keypoints-btn')) handleFeatureClick(fileId, 'key_points');
             else setActiveFile(fileId);
+
+            if (!isActionBtn && window.innerWidth < 768) { toggleMenu(false); }
         });
 
         async function deleteFile(fileId) {
@@ -282,7 +284,7 @@
         }
 
         function setActiveFile(fileId) { const hasChanged=activeFileId!==fileId;activeFileId=fileId;updateActiveFileUI();loadChatHistory();if(hasChanged&&fileId){handleSuggestQuestions(fileId)}}
-        function updateActiveFileUI() { fileListElement.querySelectorAll('[data-id]').forEach(e=>{const t=e.dataset.id===activeFileId;e.classList.toggle('bg-blue-500/10',t),e.classList.toggle('border-blue-500/50',t),e.classList.toggle('hover:bg-slate-700/50',!t)});toggleChatInput(!!activeFileId)}
+        function updateActiveFileUI() { fileListElement.querySelectorAll('[data-id]').forEach(e=>{const t=e.dataset.id===activeFileId;e.classList.toggle('bg-green-500/10',t),e.classList.toggle('border-green-500/50',t),e.classList.toggle('hover:bg-slate-700/50',!t)});toggleChatInput(!!activeFileId)}
         function toggleChatInput(enabled) { userInput.disabled=!enabled,sendButton.disabled=!enabled,userInput.placeholder=enabled?"Ask a question...":"Select or upload a document to begin.",chatInputContainer.classList.toggle('opacity-50',!enabled),enabled||(userInput.value="")}
         function showProcessing(isProcessing, text = '') { processingIndicator.classList.toggle('hidden',!isProcessing),processingIndicator.classList.toggle('flex',isProcessing),isProcessing&&(processingText.textContent=text),toggleChatInput(!1)}
         
@@ -313,17 +315,8 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
         function loadChatHistory() {
             const chatContainer = chatBox.querySelector('.flex-col');
             chatContainer.innerHTML = '';
-
-            // Disconnect any active Firebase listener.
-            if (isFirebaseEnabled && chatListenerUnsubscribe) {
-                chatListenerUnsubscribe();
-                chatListenerUnsubscribe = null;
-            }
-
-            if (!activeFileId) {
-                chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Please select a document to start.</div>`;
-                return;
-            }
+            if (isFirebaseEnabled && chatListenerUnsubscribe) { chatListenerUnsubscribe(); chatListenerUnsubscribe = null; }
+            if (!activeFileId) { chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Please select a document to start.</div>`; return; }
             
             if (isFirebaseEnabled) {
                 if (!isAuthReady || !userId) return;
@@ -331,11 +324,8 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
                 const q = query(collection(db, chatCollPath), orderBy("timestamp"));
                 chatListenerUnsubscribe = onSnapshot(q, (snapshot) => {
                      const chatContainer = chatBox.querySelector('.flex-col');
-                     if (snapshot.empty) {
-                         if (!chatContainer.querySelector('.suggestions-container')) {
-                             chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`;
-                         }
-                    } else {
+                     if (snapshot.empty) { if (!chatContainer.querySelector('.suggestions-container')) chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`; } 
+                     else {
                         const currentContent = chatContainer.innerHTML;
                         chatContainer.innerHTML = ''; 
                         snapshot.docs.forEach(doc => addMessageToChat(doc.data().role, doc.data().text, false));
@@ -347,11 +337,7 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
             } else {
                 const file = localFiles.find(f => f.id === activeFileId);
                 if (file) file.chats.forEach(msg => addMessageToChat(msg.role, msg.text, false));
-                if (!file || file.chats.length === 0) {
-                     if (!chatContainer.querySelector('.suggestions-container')) {
-                        chatContainer.innerHTML += `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`;
-                     }
-                }
+                if (!file || file.chats.length === 0) { if (!chatContainer.querySelector('.suggestions-container')) chatContainer.innerHTML += `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`; }
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
         }
@@ -466,7 +452,7 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
                 chatContainer.querySelector('.italic')?.remove();
                 
                 const suggestionsContainer = document.createElement('div');
-                suggestionsContainer.className = 'suggestions-container self-start w-full grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 animate-fade-in';
+                suggestionsContainer.className = 'suggestions-container self-start w-full grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 animate-fade-in';
                 questions.forEach(qText => {
                     const qButton = document.createElement('div');
                     qButton.className = 'suggested-question p-3 rounded-lg text-sm text-slate-200';
@@ -483,6 +469,17 @@ reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBu
 
         function openModal(title) { modalTitle.textContent=title,modalContent.classList.add("hidden"),modalLoader.classList.remove("hidden"),geminiModal.classList.remove("hidden")}
         function closeModal() { geminiModal.classList.add("hidden")}
+        
+        // --- Mobile Menu Logic ---
+        function toggleMenu(show) {
+            filePanel.classList.toggle('-translate-x-full', !show);
+            menuBackdrop.classList.toggle('hidden', !show);
+        }
+
+        menuToggleBtn.addEventListener('click', () => toggleMenu(true));
+        filePanelCloseBtn.addEventListener('click', () => toggleMenu(false));
+        menuBackdrop.addEventListener('click', () => toggleMenu(false));
+
         modalCloseBtn.addEventListener('click', closeModal);
         geminiModal.addEventListener('click', e => { if (e.target === geminiModal) closeModal(); });
     </script>

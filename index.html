@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Phosphoric Acid Expert</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- pdf.js for PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    <!-- mammoth.js for DOCX parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- xlsx.js (SheetJS) for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; border: 2px solid #1e293b; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
+
+        .chat-bubble { max-width: 85%; padding: 1rem; border-radius: 1.25rem; word-wrap: break-word; line-height: 1.6; }
+        .chat-bubble-user { background-color: #2563eb; color: #f8fafc; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .chat-bubble-ai { background-color: #1e293b; color: #cbd5e1; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        
+        /* New Animations */
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in-up { animation: slideInUp 0.4s ease-out forwards; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-15px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in { opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
+
+        @keyframes pulse {
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-slow { animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* Modal animation */
+        #gemini-modal.hidden > div { transform: scale(0.95); opacity: 0; }
+        #gemini-modal > div { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* New AI "thinking" animation */
+        .typing-indicator span {
+            height: 10px;
+            width: 10px;
+            float: left;
+            margin: 0 1px;
+            background-color: #93c5fd;
+            display: block;
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: typingAnimation 1s infinite;
+        }
+        .typing-indicator span:nth-of-type(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-of-type(3) { animation-delay: 0.4s; }
+        @keyframes typingAnimation {
+            0% { transform: translateY(0px); background-color: #93c5fd; }
+            25% { transform: translateY(-5px); background-color: #60a5fa; }
+            50% { transform: translateY(0px); background-color: #93c5fd; }
+            100% { transform: translateY(0px); background-color: #93c5fd; }
+        }
+
+        .suggested-question { cursor: pointer; background-color: #334155; border: 1px solid #475569; transition: all 0.2s ease-in-out; }
+        .suggested-question:hover { background-color: #475569; border-color: #64748b; transform: translateY(-2px); }
+        #modal-content ul { list-style-type: disc; padding-left: 1.5rem; }
+        #modal-content li { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body class="antialiased text-slate-300">
+    <div id="app" class="h-screen w-screen bg-slate-900">
+        <div class="w-full h-full bg-slate-800 flex flex-col">
+            
+            <div class="p-4 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-blue-500/20 rounded-lg"><i class="fas fa-flask-vial text-blue-400 animate-pulse-slow"></i></div>
+                    <h1 class="text-xl font-bold text-slate-100">AI Phosphoric Acid Expert</h1>
+                </div>
+                <div id="auth-status" class="text-sm text-slate-400 flex items-center space-x-2"><span>Initializing...</span></div>
+            </div>
+
+            <div class="flex-1 flex overflow-hidden">
+                <div class="w-1/3 max-w-xs border-r border-slate-700 bg-slate-900/30 flex flex-col">
+                    <div class="p-4 flex-shrink-0">
+                        <h2 class="text-lg font-semibold mb-4 text-slate-200">Your Documents</h2>
+                        <label for="file-upload" class="w-full cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg inline-flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg shadow-blue-600/20">
+                            <i class="fas fa-plus mr-2"></i><span>Upload New File</span>
+                        </label>
+                        <input id="file-upload" type="file" class="hidden" accept=".pdf,.docx,.xlsx">
+                        <p class="text-xs text-slate-500 mt-2 text-center">Supports PDF, DOCX, XLSX.</p>
+                    </div>
+                    <div id="file-list" class="flex-1 overflow-y-auto space-y-2 px-4 pb-4"></div>
+                    <div id="user-info" class="p-3 border-t border-slate-700 bg-slate-900/50 text-slate-500 text-xs break-words">
+                        <p class="font-semibold text-slate-400">User ID:</p><span id="user-id-display"></span>
+                    </div>
+                </div>
+
+                <div class="w-2/3 flex flex-col bg-slate-800">
+                    <div id="chat-box" class="flex-1 p-6 overflow-y-auto"><div class="flex flex-col space-y-5"></div></div>
+                    <div id="chat-input-container" class="p-4 border-t border-slate-700">
+                        <div id="processing-indicator" class="hidden items-center text-sm text-slate-400 mb-2">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400 mr-3"></div>
+                            <span id="processing-text">Processing file...</span>
+                        </div>
+                        <div class="relative">
+                             <textarea id="user-input" class="w-full pl-5 pr-16 py-3 bg-slate-700 text-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none" placeholder="Ask a question..." rows="1"></textarea>
+                            <button id="send-button" class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 shadow-lg shadow-blue-600/30 transform hover:scale-110">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gemini Features Modal -->
+    <div id="gemini-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-slate-700">
+            <div class="flex justify-between items-center p-4 border-b border-slate-700">
+                <h3 id="modal-title" class="text-lg font-semibold text-white">✨ AI-Generated Result</h3>
+                <button id="modal-close-btn" class="text-slate-400 hover:text-white"><i class="fas fa-times fa-lg"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto text-slate-300 leading-relaxed">
+                 <div id="modal-loader" class="flex justify-center items-center py-10"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+                 <div id="modal-content" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, serverTimestamp, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // DOM Elements
+        const fileUploadInput = document.getElementById('file-upload'), fileListElement = document.getElementById('file-list');
+        const chatBox = document.getElementById('chat-box'), userInput = document.getElementById('user-input'), sendButton = document.getElementById('send-button');
+        const processingIndicator = document.getElementById('processing-indicator'), processingText = document.getElementById('processing-text');
+        const chatInputContainer = document.getElementById('chat-input-container'), authStatusEl = document.getElementById('auth-status'), userIdDisplay = document.getElementById('user-id-display');
+        const geminiModal = document.getElementById('gemini-modal'), modalTitle = document.getElementById('modal-title'), modalContent = document.getElementById('modal-content'), modalLoader = document.getElementById('modal-loader'), modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // App State
+        let db, auth, userId, activeFileId = null, fileListenerUnsubscribe = null, chatListenerUnsubscribe = null, isAuthReady = false;
+        let isFirebaseEnabled = false;
+        let localFiles = []; 
+
+        // --- Initialization ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-phosphoric-acid-expert-local';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_FIREBASE_API_KEY", authDomain: "YOUR_FIREBASE_AUTH_DOMAIN", projectId: "YOUR_FIREBASE_PROJECT_ID" };
+        
+        if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+            isFirebaseEnabled = true;
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        authStatusEl.innerHTML = `<i class="fas fa-check-circle text-green-400"></i><span class="text-slate-400">Connected</span>`;
+                        userIdDisplay.textContent = userId;
+                        isAuthReady = true;
+                        listenToFiles();
+                    }
+                });
+                (async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                    else await signInAnonymously(auth);
+                })();
+
+            } catch(error) {
+                isFirebaseEnabled = false; 
+                runInLocalMode();
+            }
+        } else {
+            runInLocalMode();
+        }
+
+        function runInLocalMode() {
+            authStatusEl.innerHTML = `<i class="fas fa-desktop text-blue-400"></i><span class="text-slate-400">Local Mode</span>`;
+            userIdDisplay.parentElement.style.display = 'none';
+            renderFileList();
+        }
+
+        function listenToFiles() { 
+            if (!isFirebaseEnabled || !isAuthReady || !userId) return;
+            const filesCollPath = `artifacts/${appId}/users/${userId}/files`;
+            const q = query(collection(db, filesCollPath), orderBy("createdAt", "desc"));
+            
+            fileListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+                const filesFromDb = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const createdAt = data.createdAt ? data.createdAt.toDate() : new Date();
+                    return { id: doc.id, ...data, createdAt: createdAt };
+                });
+                renderFileList(filesFromDb);
+            }, (error) => { fileListElement.innerHTML = `<p class="text-sm text-red-400">Error loading files. Check permissions.</p>`; });
+        }
+
+        function getFileIcon(fileName) {
+            if (fileName.endsWith('.pdf')) return 'fa-file-pdf text-red-400';
+            if (fileName.endsWith('.docx')) return 'fa-file-word text-blue-400';
+            if (fileName.endsWith('.xlsx')) return 'fa-file-excel text-green-400';
+            return 'fa-file-alt text-slate-400';
+        }
+        
+        function renderFileList(files = []) {
+            if (!isFirebaseEnabled) {
+                files = localFiles.sort((a,b) => b.createdAt - a.createdAt);
+            }
+            if (files.length === 0) {
+                fileListElement.innerHTML = '<p class="text-sm text-slate-500 text-center px-4 animate-fade-in">No documents yet.</p>';
+                setActiveFile(null); return;
+            }
+
+            let fileToMakeActive = activeFileId;
+            if (!fileToMakeActive || !files.some(f => f.id === fileToMakeActive)) {
+                fileToMakeActive = files.length > 0 ? files[0].id : null;
+            }
+            
+            fileListElement.innerHTML = ''; 
+            files.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = `p-3 rounded-lg cursor-pointer flex justify-between items-center transition-all duration-200 border-2 border-transparent group animate-fade-in`;
+                fileItem.style.animationDelay = `${index * 50}ms`;
+                fileItem.dataset.id = file.id;
+                fileItem.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                       <i class="fas ${getFileIcon(file.name)} fa-lg w-6 text-center"></i>
+                       <div class="flex-1 overflow-hidden">
+                            <p class="font-medium text-sm text-slate-200 truncate">${file.name}</p>
+                            <p class="text-xs text-slate-500">${new Date(file.createdAt).toLocaleDateString()}</p>
+                       </div>
+                    </div>
+                    <div class="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="summarize-btn text-slate-400 hover:text-blue-400 transition-colors" data-id="${file.id}" title="✨ Summarize Document"><i class="fas fa-align-left"></i></button>
+                        <button class="keypoints-btn text-slate-400 hover:text-green-400 transition-colors" data-id="${file.id}" title="✨ Extract Key Points"><i class="fas fa-list-check"></i></button>
+                        <button class="delete-file-btn text-slate-500 hover:text-red-400 transition-colors" data-id="${file.id}" title="Delete Document"><i class="fas fa-trash-alt"></i></button>
+                    </div>`;
+                fileListElement.appendChild(fileItem);
+            });
+            setActiveFile(fileToMakeActive);
+        }
+
+        fileListElement.addEventListener('click', (e) => {
+            const fileItem = e.target.closest('[data-id]');
+            if (!fileItem) return;
+            const fileId = fileItem.dataset.id;
+            if (e.target.closest('.delete-file-btn')) deleteFile(fileId);
+            else if (e.target.closest('.summarize-btn')) handleFeatureClick(fileId, 'summary');
+            else if (e.target.closest('.keypoints-btn')) handleFeatureClick(fileId, 'key_points');
+            else setActiveFile(fileId);
+        });
+
+        async function deleteFile(fileId) {
+            if (window.confirm('Are you sure you want to delete this file and its chat history?')) {
+                if (isFirebaseEnabled) {
+                     if (!isAuthReady || !userId) return;
+                     try { await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/files/${fileId}`)); }
+                     catch (error) { addMessageToChat('system', `Error deleting file: ${error.message}`); }
+                } else {
+                    localFiles = localFiles.filter(f => f.id !== fileId);
+                    if (activeFileId === fileId) activeFileId = null;
+                    renderFileList();
+                }
+            }
+        }
+
+        function setActiveFile(fileId) { const hasChanged=activeFileId!==fileId;activeFileId=fileId;updateActiveFileUI();loadChatHistory();if(hasChanged&&fileId){handleSuggestQuestions(fileId)}}
+        function updateActiveFileUI() { fileListElement.querySelectorAll('[data-id]').forEach(e=>{const t=e.dataset.id===activeFileId;e.classList.toggle('bg-blue-500/10',t),e.classList.toggle('border-blue-500/50',t),e.classList.toggle('hover:bg-slate-700/50',!t)});toggleChatInput(!!activeFileId)}
+        function toggleChatInput(enabled) { userInput.disabled=!enabled,sendButton.disabled=!enabled,userInput.placeholder=enabled?"Ask a question...":"Select or upload a document to begin.",chatInputContainer.classList.toggle('opacity-50',!enabled),enabled||(userInput.value="")}
+        function showProcessing(isProcessing, text = '') { processingIndicator.classList.toggle('hidden',!isProcessing),processingIndicator.classList.toggle('flex',isProcessing),isProcessing&&(processingText.textContent=text),toggleChatInput(!1)}
+        
+        fileUploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            showProcessing(true, `Processing ${file.name}...`);
+            try {
+                const content = await parseFile(file);
+                if (!content?.trim()) throw new Error("Could not extract text. File might be empty or image-based.");
+                
+                if (isFirebaseEnabled) {
+                    if (!isAuthReady || !userId) throw new Error("Not authenticated.");
+                    await addDoc(collection(db, `artifacts/${appId}/users/${userId}/files`), { name: file.name, content, createdAt: serverTimestamp() });
+                } else {
+                    localFiles.push({ id: crypto.randomUUID(), name: file.name, content, createdAt: new Date(), chats: [] });
+                    renderFileList();
+                }
+
+            } catch (error) { addMessageToChat('system', `Error: ${error.message}`);
+            } finally { showProcessing(false); fileUploadInput.value = ''; }
+        });
+
+        async function parseFile(file) { return new Promise((resolve,reject)=>{const r=new FileReader;r.onerror=()=>{r.abort();reject(new DOMException("Problem parsing file."))},r.onload=async()=>{try{const b=r.result;if(file.type==="application/pdf"){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';const p=await pdfjsLib.getDocument({data:b}).promise;let t='';for(let i=1;i<=p.numPages;i++){const a=await p.getPage(i),e=await a.getTextContent();t+=e.items.map(s=>s.str).join(' ')+' '}
+resolve(t)}else if(file.name.endsWith('.docx')){const p=await mammoth.extractRawText({arrayBuffer:b});resolve(p.value)}else if(file.name.endsWith('.xlsx')){const p=XLSX.read(b,{type:'array'});let t='';p.SheetNames.forEach(s=>{const a=p.Sheets[s];t+=XLSX.utils.sheet_to_csv(a,{RS:' '})+'\n\n'});resolve(t)}else
+reject(new Error("Unsupported file type."))}catch(e){reject(e)}},r.readAsArrayBuffer(file)})};
+
+        function loadChatHistory() {
+            const chatContainer = chatBox.querySelector('.flex-col');
+            chatContainer.innerHTML = '';
+
+            // Disconnect any active Firebase listener.
+            if (isFirebaseEnabled && chatListenerUnsubscribe) {
+                chatListenerUnsubscribe();
+                chatListenerUnsubscribe = null;
+            }
+
+            if (!activeFileId) {
+                chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Please select a document to start.</div>`;
+                return;
+            }
+            
+            if (isFirebaseEnabled) {
+                if (!isAuthReady || !userId) return;
+                const chatCollPath = `artifacts/${appId}/users/${userId}/files/${activeFileId}/chats`;
+                const q = query(collection(db, chatCollPath), orderBy("timestamp"));
+                chatListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+                     const chatContainer = chatBox.querySelector('.flex-col');
+                     if (snapshot.empty) {
+                         if (!chatContainer.querySelector('.suggestions-container')) {
+                             chatContainer.innerHTML = `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`;
+                         }
+                    } else {
+                        const currentContent = chatContainer.innerHTML;
+                        chatContainer.innerHTML = ''; 
+                        snapshot.docs.forEach(doc => addMessageToChat(doc.data().role, doc.data().text, false));
+                        const suggestions = new DOMParser().parseFromString(currentContent, 'text/html').querySelector('.suggestions-container');
+                        if (suggestions) chatContainer.appendChild(suggestions);
+                    }
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+            } else {
+                const file = localFiles.find(f => f.id === activeFileId);
+                if (file) file.chats.forEach(msg => addMessageToChat(msg.role, msg.text, false));
+                if (!file || file.chats.length === 0) {
+                     if (!chatContainer.querySelector('.suggestions-container')) {
+                        chatContainer.innerHTML += `<div class="chat-bubble chat-bubble-ai animate-slide-in-up">Ask your first question!</div>`;
+                     }
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+        
+        async function getActiveFileContent(fileId) {
+            if (isFirebaseEnabled) {
+                if (!isAuthReady || !userId) throw new Error("Not authenticated.");
+                const fileDocSnap = await getDoc(doc(db, `artifacts/${appId}/users/${userId}/files/${fileId}`));
+                if (!fileDocSnap.exists()) throw new Error("Active file not found.");
+                return fileDocSnap.data().content;
+            } else {
+                const file = localFiles.find(f => f.id === fileId);
+                if (!file) throw new Error("Active file not found.");
+                return file.content;
+            }
+        }
+
+        async function handleSendMessage(question) {
+            if (!question || !activeFileId) return;
+            userInput.value = ''; userInput.style.height = 'auto';
+            addMessageToChat('user', question); showThinking(true);
+            try {
+                const documentContent = await getActiveFileContent(activeFileId);
+                const prompt = `Based *only* on the content of the following document, answer the user's question. If the answer is not found, state that.\n\nDOCUMENT:\n---\n${documentContent}\n---\n\nQUESTION:\n${question}`;
+                const aiResponse = await callGemini(prompt);
+                addMessageToChat('ai', aiResponse);
+                
+                if(isFirebaseEnabled) {
+                    if (!isAuthReady || !userId) return;
+                    const chatCollPath = `artifacts/${appId}/users/${userId}/files/${activeFileId}/chats`;
+                    await addDoc(collection(db, chatCollPath), { role: 'user', text: question, timestamp: serverTimestamp() });
+                    await addDoc(collection(db, chatCollPath), { role: 'ai', text: aiResponse, timestamp: serverTimestamp() });
+                } else {
+                    const file = localFiles.find(f => f.id === activeFileId);
+                    if(file) file.chats.push({role: 'user', text: question}, {role: 'ai', text: aiResponse});
+                }
+            } catch (error) { addMessageToChat('system', `An error occurred: ${error.message}`);
+            } finally { showThinking(false); }
+        }
+
+        function addMessageToChat(role, text, isNew = true) { 
+            const e=chatBox.querySelector(".flex-col"),t=e.querySelector(".thinking-indicator");
+            t&&t.remove(),"user"===role&&e.querySelector(".suggestions-container")?.remove();
+            const o=document.createElement("div");
+            o.className = 'animate-slide-in-up';
+            if ("user"===role) o.classList.add('chat-bubble', 'chat-bubble-user');
+            else if ("ai"===role) o.classList.add('chat-bubble', 'chat-bubble-ai');
+            else o.classList.add('text-center', 'text-sm', 'text-slate-500', 'my-2', 'italic');
+            o.textContent=text;
+            e.appendChild(o);
+            isNew&&(chatBox.scrollTop=chatBox.scrollHeight);
+        }
+        function showThinking(isThinking) { 
+            const e=chatBox.querySelector(".flex-col");
+            e.querySelector(".thinking-indicator")?.remove();
+            if(isThinking){
+                const t=document.createElement("div");
+                t.className="chat-bubble chat-bubble-ai thinking-indicator flex items-center self-start animate-slide-in-up";
+                t.innerHTML='<div class="typing-indicator"><span></span><span></span><span></span></div>';
+                e.appendChild(t);
+                chatBox.scrollTop=chatBox.scrollHeight;
+            }
+            toggleChatInput(!isThinking);
+        }
+        userInput.addEventListener('input', () => { userInput.style.height = 'auto'; userInput.style.height = (userInput.scrollHeight) + 'px'; });
+        sendButton.addEventListener('click', () => handleSendMessage(userInput.value.trim()));
+        userInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(userInput.value.trim()); } });
+        
+        // --- Gemini Features ---
+        async function callGemini(prompt) {
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiKey = "AIzaSyC0nkpQt_bYf6B9hCN8b5LK28NzYvPWCyo";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error: ${response.status} - ${errorText}`);
+            }
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't get a response from the AI.";
+        }
+
+        async function handleFeatureClick(fileId, feature) {
+            const titles = { summary: '✨ Document Summary', key_points: '✨ Key Points' };
+            openModal(titles[feature]);
+            try {
+                const content = await getActiveFileContent(fileId);
+                const prompts = {
+                    summary: `Provide a concise, easy-to-understand summary for the following document.\n\nDOCUMENT:\n---\n${content}`,
+                    key_points: `Extract the most important facts, data points, and conclusions from the following document as a bulleted list using markdown.\n\nDOCUMENT:\n---\n${content}`
+                };
+                const result = await callGemini(prompts[feature]);
+                modalContent.innerHTML = result.replace(/\* /g, '<ul><li>').replace(/\n/g, '</li></ul><ul><li>').replace(/<\/ul><ul><li><\/li>/g, '</ul>') + '</li></ul>';
+                modalLoader.classList.add('hidden');
+                modalContent.classList.remove('hidden');
+            } catch (error) {
+                modalContent.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+                modalLoader.classList.add('hidden');
+                modalContent.classList.remove('hidden');
+            }
+        }
+
+        async function handleSuggestQuestions(fileId) {
+            const chatContainer = chatBox.querySelector('.flex-col');
+            chatContainer.querySelector('.suggestions-container')?.remove();
+            addMessageToChat('system', '✨ Analyzing document for question ideas...');
+            try {
+                const content = (await getActiveFileContent(fileId)).substring(0, 4000);
+                const prompt = `Based on the following document snippet, suggest three insightful and distinct questions a user might ask. Present them as a simple numbered list, with each question on a new line. Do not add any other text or formatting.\n\nSNIPPET:\n---\n${content}`;
+                const result = await callGemini(prompt);
+                const questions = result.split('\n').map(q => q.replace(/^\d+\.\s*/, '')).filter(q => q.trim() !== '');
+                chatContainer.querySelector('.italic')?.remove();
+                
+                const suggestionsContainer = document.createElement('div');
+                suggestionsContainer.className = 'suggestions-container self-start w-full grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 animate-fade-in';
+                questions.forEach(qText => {
+                    const qButton = document.createElement('div');
+                    qButton.className = 'suggested-question p-3 rounded-lg text-sm text-slate-200';
+                    qButton.textContent = qText;
+                    qButton.onclick = () => handleSendMessage(qText);
+                    suggestionsContainer.appendChild(qButton);
+                });
+                chatContainer.appendChild(suggestionsContainer);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                addMessageToChat('system', 'Could not generate suggested questions.');
+            }
+        }
+
+        function openModal(title) { modalTitle.textContent=title,modalContent.classList.add("hidden"),modalLoader.classList.remove("hidden"),geminiModal.classList.remove("hidden")}
+        function closeModal() { geminiModal.classList.add("hidden")}
+        modalCloseBtn.addEventListener('click', closeModal);
+        geminiModal.addEventListener('click', e => { if (e.target === geminiModal) closeModal(); });
+    </script>
+</body>
+</html>
